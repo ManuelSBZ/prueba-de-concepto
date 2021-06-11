@@ -48,7 +48,67 @@ app.post('/webhook', async (req, res) => {
   // intentMap.set('your intent name here', googleAssistantHandler);
   agent.handleRequest(intentMap)
 })
+app.post('/weather/webhook', async (req, res) => {
+  console.log("Dialogflow Request headers: " + JSON.stringify(req.headers));
+  console.log("Dialogflow Request body: " + JSON.stringify(req.body));
+  let jsonResponse
+    if ( req.body.sessionInfo.parameters.ciudad ) {
+      try {
+        const {city} = req.body.sessionInfo.parameters.ciudad
+        const request = {
+          method: 'GET',
+          params: {
+            appid: '62b52e4db0cdbb0b58d063f9e72ba080',
+            units: 'metric',
+            lang: 'es',
+            q: city,
+          },
+          url: 'https://api.openweathermap.org/data/2.5/weather'
+        }
+        const response = await axios(request)
+        console.log("after response")
+        jsonResponse = {
+          //fulfillment text response to be sent to the agent if there are no defined responses for the specified tag
+          fulfillment_response: {
+            messages: [
+              {
+                text: {
+                  ////fulfillment text response to be sent to the agent
+                  text: [
+                    `${city} \n general: ${response.data.weather[0].description} \n temperatura promedio: ${response.data.main.temp}°C \n humedad: ${response.data.main.humidity}%`,
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      } catch (e) {
+        const message = e.response
+        if (!message) throw new Error(e.message)
+        else throw new Error(message.data.error)
+      }
+    } else {
+      let tag = "foo"  
+      jsonResponse = {
+        //fulfillment text response to be sent to the agent if there are no defined responses for the specified tag
+        fulfillment_response: {
+          messages: [
+            {
+              text: {
+                ////fulfillment text response to be sent to the agent
+                text: [
+                  `There are no fulfillment responses defined for "${tag}"" tag`
+                ]
+              }
+            }
+          ]
+        }
+      };
+    }
 
+res.json(jsonResponse)
+}
+)
 app.listen(port, () => {
   console.log(`Example app listening at http://localhost:${port}`)
 })
